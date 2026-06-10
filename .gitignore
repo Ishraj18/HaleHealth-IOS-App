@@ -1,0 +1,34 @@
+# ───────────────────────────────────────────────────────────
+# Hale Health — .gitignore
+# ───────────────────────────────────────────────────────────
+
+# macOS
+.DS_Store
+*.swp
+
+# Xcode — user-specific state (never shared)
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+DerivedData/
+build/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/*/.build/
+
+# Secrets — real credentials live ONLY in Config/Secrets.xcconfig.
+# Commit Config/Secrets.xcconfig.example as the template instead.
+Config/Secrets.xcconfig
+
+# Fastlane / CI (future)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png

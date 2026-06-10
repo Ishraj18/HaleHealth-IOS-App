@@ -1,0 +1,12 @@
+// ───────────────────────────────────────────────────────────────────────────
+// Debug.xcconfig — base configuration for the Debug build of HaleHealth.
+//
+// Real credentials are NEVER stored here. They live in Config/Secrets.xcconfig,
+// which is git-ignored. Copy Config/Secrets.xcconfig.example → Secrets.xcconfig
+// and fill in your values.
+//
+// The optional include (`#include?`) means a missing Secrets file degrades
+// gracefully (empty values) instead of breaking the build on a clean checkout.
+// ───────────────────────────────────────────────────────────────────────────
+
+#include? "Secrets.xcconfig"

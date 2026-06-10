@@ -1,0 +1,9 @@
+// ───────────────────────────────────────────────────────────────────────────
+// Release.xcconfig — base configuration for the Release build of HaleHealth.
+//
+// See Debug.xcconfig for the secrets convention. When you introduce a separate
+// Staging/Production split (Phase 2+), point this at a Secrets.Release.xcconfig
+// holding production keys.
+// ───────────────────────────────────────────────────────────────────────────
+
+#include? "Secrets.xcconfig"
