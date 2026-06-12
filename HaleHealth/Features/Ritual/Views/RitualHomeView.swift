@@ -3,27 +3,24 @@ import OSLog
 import HaleDesignSystem
 
 /// The Ritual tab home. No routine yet → an inviting build-your-routine state;
-/// routine exists → today's timeline, regenerated fresh from profile + live AQI.
+/// routine exists → today's timeline, read straight from `RoutineStore` (the
+/// single place plans are generated).
 struct RitualHomeView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var store = RoutineStore.shared
     @State private var showQuiz = false
     @State private var isRevealing = false
     @State private var celebration = 0
-    @AppStorage("health_sync_enabled") private var healthSyncEnabled = false
-    @AppStorage("routine_reminders_enabled") private var remindersEnabled = false
-    @State private var observedWake: Int?
-
-    private let engine = RuleBasedRoutineEngine()
-    private let health: HealthServiceProtocol = HealthFeature.enabled ? HealthKitService() : DisabledHealthService()
+    @AppStorage(Constants.UserDefaultsKey.healthSyncEnabled) private var healthSyncEnabled = false
+    @AppStorage(Constants.UserDefaultsKey.routineRemindersEnabled) private var remindersEnabled = false
 
     var body: some View {
         ZStack {
             Group {
                 if isRevealing {
                     generatingState
-                } else if let profile = store.profile {
-                    timeline(for: profile)
+                } else if let routine = store.routine {
+                    timeline(routine)
                 } else {
                     emptyState
                 }
@@ -66,16 +63,10 @@ struct RitualHomeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func timeline(for profile: RoutineProfile) -> some View {
-        // Sleep-adapted anchor: shift the day when Health saw a different wake.
-        var effective = profile
-        let shifted = observedWake.map { abs($0 - profile.wakeMinutes) > 45 } ?? false
-        if shifted, let wake = observedWake { effective.wakeMinutes = wake }
-        let routine = engine.generate(from: effective, aqi: appState.currentAQI)
-
-        return ScrollView {
+    private func timeline(_ routine: DailyRoutine) -> some View {
+        ScrollView {
             VStack(alignment: .leading, spacing: HHSpacing.md) {
-                if shifted, let block = routine.blocks.first {
+                if store.isWakeShifted, let block = routine.blocks.first {
                     Text("You woke around \(block.timeLabel) — today's plan adjusted.")
                         .hhFont(.hhCaption)
                         .hhText(.secondary)
@@ -85,7 +76,7 @@ struct RitualHomeView: View {
                     celebration += 1
                 }
 
-                if !healthSyncEnabled && health.isAvailable {
+                if !healthSyncEnabled && appState.healthService.isAvailable {
                     healthCard
                 }
 
@@ -96,7 +87,10 @@ struct RitualHomeView: View {
             }
             .padding(HHSpacing.lg)
         }
-        .task { await healthAutoSync(routine) }
+        .task {
+            store.rolloverIfNeeded()
+            await appState.syncHealthIntoRitual()
+        }
     }
 
     private var healthCard: some View {
@@ -111,8 +105,9 @@ struct RitualHomeView: View {
                 HHButton("Connect Health", style: .secondary) {
                     Task {
                         do {
-                            try await health.requestAuthorization()
+                            try await appState.healthService.requestAuthorization()
                             healthSyncEnabled = true
+                            await appState.syncHealthIntoRitual()
                         } catch {
                             Log.app.error("Health auth failed: \(error.localizedDescription, privacy: .public)")
                         }
@@ -151,18 +146,6 @@ struct RitualHomeView: View {
                 }
             }
             .tint(.hhWarmSaffron)
-        }
-    }
-
-    /// Auto-completes movement blocks from Health data and reads the sleep anchor.
-    private func healthAutoSync(_ routine: DailyRoutine) async {
-        guard healthSyncEnabled else { return }
-        observedWake = await health.lastWakeMinutes()
-        let workouts = await health.todayWorkoutCount()
-        let steps = await health.todaySteps()
-        for block in routine.blocks {
-            if block.kind == .workout, workouts > 0 { store.markDone(block.id) }
-            if block.kind == .walk, steps >= 3000 { store.markDone(block.id) }
         }
     }
 

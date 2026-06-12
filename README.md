@@ -30,9 +30,11 @@ HaleHealth/                   App target (synchronized folder — drop files in,
     Services/                 Protocols + Supabase/AQI implementations + Mocks
     State/                    AppState, UserSession, ProductCatalog
     Utilities/                Extensions, Constants, Logger
-  Features/                   Onboarding, Today (built), Shield/Hawa/Ritual/Profile (placeholders)
+  Features/                   Onboarding, Today, Shield, Hawa, Ritual, Shuddhi, Profile
   Models/                     Domain models + DTOs
+HaleHealthTests/              Unit tests (engine, stores, trends, insights, AI context)
 supabase/schema.sql           Database schema + RLS policies
+supabase/migrations/          Run in order after schema.sql (002 → 003 → 004)
 ```
 
 > **Synchronized folders:** the app target uses Xcode 16's file-system
@@ -72,9 +74,11 @@ until you add real keys.
 ### 2. Supabase
 
 Create a Supabase project and run [`supabase/schema.sql`](supabase/schema.sql)
-in the SQL editor. Enable **Email OTP** auth (Authentication → Providers →
-Email → "Email OTP"). The schema enables RLS on every user-owned table and
-auto-creates a `profiles` row on signup.
+in the SQL editor, then each file in `supabase/migrations/` in order
+(`002_routines.sql`, `003_meditation.sql`, `004_history.sql`). Enable
+**Email OTP** auth (Authentication → Providers → Email → "Email OTP"). The
+schema enables RLS on every user-owned table and auto-creates a `profiles` row
+on signup.
 
 ### 3. Build & run
 
@@ -84,6 +88,16 @@ xcodebuild build -scheme HaleHealth -destination 'generic/platform=iOS Simulator
 
 Or open `HaleHealth.xcodeproj` in Xcode and run. Fonts are bundled in the design
 system package and register at launch — no setup needed.
+
+### 4. Tests
+
+```bash
+xcodebuild test -scheme HaleHealth -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5'
+```
+
+Or **⌘U** in Xcode. The `HaleHealthTests` target covers the routine engine
+rules, store lifecycle (completion, streaks, day rollover, drink-log dedup),
+the history/trends layer, the insight engine, and the AI context builder.
 
 ---
 
@@ -103,6 +117,17 @@ system package and register at launch — no setup needed.
 - **Navigation:** `NavigationStack` per tab, paths held in `TabRouter` so each
   tab preserves its own stack.
 - **Errors:** all funnel through `APIError`; nothing is swallowed with `try?`.
+- **Routine plan:** generated in exactly one place (`RoutineStore`) from
+  profile + `GenerationContext` (AQI, Health-observed wake). Block IDs are
+  semantic slots (`drink-morning`), so completion state survives regeneration.
+  `RoutineEngineProtocol` is async/throwing — a future AI engine slots in
+  behind it; the rule engine stays the deterministic fallback.
+- **History:** `HistoryStore` keeps one `DailySnapshot` per day (plan size,
+  completions, meditation, drinks, Health, AQI), local-first with Supabase
+  sync (`daily_snapshots`, `routine_days`). `TrendCalculator` + `InsightEngine`
+  turn it into the Today screen's personal "Your week" card;
+  `UserContextBuilder` assembles the same record into the JSON payload a
+  future Vaidya AI prompt consumes.
 
 ### Concurrency
 

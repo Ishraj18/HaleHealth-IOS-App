@@ -7,6 +7,9 @@ protocol RoutineSyncServiceProtocol: AnyObject {
     func pullProfile(userId: UUID) async throws -> RoutineProfile?
     func pushCompletion(_ completion: RoutineCompletion, userId: UUID) async throws
     func pullCompletion(day: String, userId: UUID) async throws -> RoutineCompletion?
+    /// Snapshots the generated plan for `day` so history keeps what was
+    /// recommended, not just what was checked.
+    func pushPlan(_ plan: DailyRoutine, day: String, userId: UUID) async throws
     /// Registers `day` as kept; returns the server's streak count.
     func keepStreak(day: String) async throws -> Int
 }
@@ -78,6 +81,24 @@ final class SupabaseRoutineSyncService: RoutineSyncServiceProtocol {
         } catch { throw APIError.supabaseError(error.localizedDescription) }
     }
 
+    private struct PlanRow: Codable {
+        let userId: UUID
+        let day: String
+        let plan: DailyRoutine
+        enum CodingKeys: String, CodingKey {
+            case day, plan
+            case userId = "user_id"
+        }
+    }
+
+    func pushPlan(_ plan: DailyRoutine, day: String, userId: UUID) async throws {
+        do {
+            try await client.from("routine_days")
+                .upsert(PlanRow(userId: userId, day: day, plan: plan), onConflict: "user_id,day")
+                .execute()
+        } catch { throw APIError.supabaseError(error.localizedDescription) }
+    }
+
     func keepStreak(day: String) async throws -> Int {
         do {
             return try await client.rpc("keep_streak", params: ["p_day": day]).execute().value
@@ -91,5 +112,6 @@ final class MockRoutineSyncService: RoutineSyncServiceProtocol {
     func pullProfile(userId: UUID) async throws -> RoutineProfile? { nil }
     func pushCompletion(_ completion: RoutineCompletion, userId: UUID) async throws {}
     func pullCompletion(day: String, userId: UUID) async throws -> RoutineCompletion? { nil }
+    func pushPlan(_ plan: DailyRoutine, day: String, userId: UUID) async throws {}
     func keepStreak(day: String) async throws -> Int { 1 }
 }

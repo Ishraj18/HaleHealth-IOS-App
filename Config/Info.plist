@@ -20,10 +20,6 @@
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -35,8 +31,18 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
+	<string>Hale Health reads your steps, workouts and sleep so your daily ritual can adapt to your real day — blocks check themselves off and your morning anchors shift to when you actually woke.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Hale Health reads your steps, workouts and sleep so your daily ritual can adapt to your real day — blocks check themselves off and your morning anchors shift to when you actually woke.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Hale Health does not write data to Health today. This permission is reserved for a future option to save your breathing sessions as Mindful Minutes.</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>
@@ -50,6 +56,8 @@
 	<dict>
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
 	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

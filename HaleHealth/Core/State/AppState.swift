@@ -31,8 +31,10 @@ final class AppState: ObservableObject {
     let authService: AuthServiceProtocol
     let databaseService: DatabaseServiceProtocol
     let aqiService: AQIServiceProtocol
+    let healthService: HealthServiceProtocol
     let productCatalog: ProductCatalog
     lazy var routineSyncService: RoutineSyncServiceProtocol = SupabaseRoutineSyncService()
+    lazy var historySyncService: HistorySyncServiceProtocol = SupabaseHistorySyncService()
 
     private let defaults: UserDefaults
     private var cancellables = Set<AnyCancellable>()
@@ -41,6 +43,7 @@ final class AppState: ObservableObject {
         authService: AuthServiceProtocol = SupabaseAuthService(),
         databaseService: DatabaseServiceProtocol = SupabaseDatabaseService(),
         aqiService: AQIServiceProtocol = AQIService(),
+        healthService: HealthServiceProtocol? = nil,
         productCatalog: ProductCatalog? = nil,
         userSession: UserSession? = nil,
         defaults: UserDefaults = .standard
@@ -50,6 +53,8 @@ final class AppState: ObservableObject {
         self.authService = authService
         self.databaseService = databaseService
         self.aqiService = aqiService
+        self.healthService = healthService
+            ?? (HealthFeature.enabled ? HealthKitService() : DisabledHealthService())
         self.productCatalog = productCatalog ?? .shared
         self.userSession = userSession ?? UserSession()
         self.defaults = defaults
@@ -60,6 +65,9 @@ final class AppState: ObservableObject {
         self.userSession.objectWillChange
             .sink { [weak self] in self?.objectWillChange.send() }
             .store(in: &cancellables)
+
+        // Every routine change flows into the daily history record.
+        HistoryStore.shared.bind(to: RoutineStore.shared)
 
         #if DEBUG
         applyUITestStateIfNeeded()
@@ -84,12 +92,42 @@ final class AppState: ObservableObject {
         aqiLoadState = .loading
         do {
             let reading = try await aqiService.fetchCurrentAQI()
-            currentAQI = reading
-            aqiLoadState = .loaded
+            setAQI(reading)
         } catch {
             let message = (error as? APIError)?.errorDescription ?? error.localizedDescription
             aqiLoadState = .failed(message)
             Log.aqi.error("AQI load failed: \(message, privacy: .public)")
+        }
+    }
+
+    /// The single entry point for a fresh AQI reading: shared state for the
+    /// Today/Hawa screens, the routine plan's generation context, and the
+    /// day's history record.
+    func setAQI(_ reading: AQIReading) {
+        currentAQI = reading
+        aqiLoadState = .loaded
+        RoutineStore.shared.updateAQI(reading)
+        HistoryStore.shared.updateToday { $0.aqi = reading.value }
+    }
+
+    // MARK: - Health → ritual
+
+    /// Reads today's Health signals into the ritual: the wake anchor shifts to
+    /// when the user actually woke, and movement blocks check themselves off.
+    /// No-op until the user enables Health sync.
+    func syncHealthIntoRitual() async {
+        guard defaults.bool(forKey: Constants.UserDefaultsKey.healthSyncEnabled),
+              healthService.isAvailable else { return }
+        let store = RoutineStore.shared
+        store.rolloverIfNeeded()
+        store.updateObservedWake(await healthService.lastWakeMinutes())
+        let workouts = await healthService.todayWorkoutCount()
+        let steps = await healthService.todaySteps()
+        if workouts > 0 { store.markDone(kind: .workout) }
+        if steps >= Constants.Health.walkStepThreshold { store.markDone(kind: .walk) }
+        HistoryStore.shared.updateToday {
+            $0.steps = steps
+            $0.workouts = workouts
         }
     }
 
@@ -108,9 +146,16 @@ final class AppState: ObservableObject {
         }
         guard let base else { return }
 
-        let resolved = await mergedWithDatabase(base)
+        let merged = await mergedWithDatabase(base)
+        let resolved = applyingIdentity(base, to: merged)
         userSession.set(profile: resolved)
         attachRoutineSync(for: resolved)
+        // Heal the stored row when fresher identity data changed something
+        // (e.g. a pre-existing email-derived name replaced by Google's name).
+        if resolved != merged {
+            do { try await databaseService.saveProfile(resolved) }
+            catch { Log.auth.error("Profile heal failed: \(error.localizedDescription, privacy: .public)") }
+        }
     }
 
     /// Single auth entry point for both modes: authenticates, merges the stored
@@ -138,9 +183,7 @@ final class AppState: ObservableObject {
     /// apply onboarding goals, persist, attach sync. The trigger-created row can
     /// have empty fields on first sign-in — auth-derived values fill the gaps.
     private func finalizeSession(base: UserProfile, onboardingGoals: [UserProfile.BodyGoal]) async {
-        var resolved = await mergedWithDatabase(base)
-        if resolved.displayName.isEmpty { resolved.displayName = base.displayName }
-        if resolved.email.isEmpty { resolved.email = base.email }
+        var resolved = applyingIdentity(base, to: await mergedWithDatabase(base))
         if !onboardingGoals.isEmpty && resolved.bodyGoals.isEmpty {
             resolved.bodyGoals = onboardingGoals
         }
@@ -178,17 +221,36 @@ final class AppState: ObservableObject {
         return base
     }
 
-    /// Connects the routine store to Supabase for the signed-in user.
+    /// Identity-provider data (Google/Apple metadata) beats stale stored values:
+    /// there is no in-app name editing yet, so the provider's name and photo are
+    /// always the freshest truth. A name merely derived from the email keeps
+    /// whatever the stored row has.
+    private func applyingIdentity(_ base: UserProfile, to stored: UserProfile) -> UserProfile {
+        var resolved = stored
+        let emailFallback = base.email.split(separator: "@").first.map { String($0).capitalized } ?? ""
+        if !base.displayName.isEmpty, base.displayName != emailFallback {
+            resolved.displayName = base.displayName
+        }
+        if resolved.displayName.isEmpty { resolved.displayName = base.displayName }
+        if resolved.email.isEmpty { resolved.email = base.email }
+        if let avatar = base.avatarURL { resolved.avatarURL = avatar }
+        return resolved
+    }
+
+    /// Connects the routine + history stores to Supabase for the signed-in user.
     func attachRoutineSync(for profile: UserProfile) {
         RoutineStore.shared.configure(
             userId: profile.id,
             sync: routineSyncService,
             serverStreak: profile.streakCount
         )
+        HistoryStore.shared.configure(userId: profile.id, sync: historySyncService)
     }
 
-    /// Persists a checked-off drink block as a DrinkLog (fire-and-forget).
+    /// Persists a checked-off drink block as a DrinkLog (fire-and-forget) and
+    /// counts it in the day's history record.
     func logDrink(_ productID: ProductID) {
+        HistoryStore.shared.updateToday { $0.drinksLogged += 1 }
         guard let userId = userSession.profile?.id, authService.isAuthenticated else { return }
         let log = DrinkLog(id: UUID(), userId: userId, productId: productID,
                            loggedAt: Date(), aqiAtLogTime: currentAQI?.value,
@@ -227,5 +289,7 @@ final class AppState: ObservableObject {
         RoutineStore.shared.detachSync()
         RoutineStore.shared.clearAllLocal()
         MeditationStore.shared.clearLocal()
+        HistoryStore.shared.detachSync()
+        HistoryStore.shared.clearLocal()
     }
 }

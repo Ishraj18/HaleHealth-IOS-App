@@ -26,14 +26,7 @@ struct TodayView: View {
 
                 ritualCard
 
-                // Reserved for personalised insights (Phase 2).
-                HHCard {
-                    HHEmptyState(
-                        title: "Insights",
-                        subtitle: "Personalised insights arrive in Phase 2.",
-                        systemImage: "sparkles"
-                    )
-                }
+                YourWeekCard()
             }
             .padding(HHSpacing.lg)
             .hhWatermark("आज", size: 170, alignment: .topTrailing)
@@ -55,6 +48,7 @@ struct TodayView: View {
         .toolbar(.hidden, for: .navigationBar) // Today has its own header
         .refreshable { await viewModel.refresh() }
         .task {
+            routineStore.rolloverIfNeeded()
             viewModel.syncFromAppState()
             if viewModel.aqi == nil { await viewModel.refresh() }
         }
@@ -104,10 +98,9 @@ struct TodayView: View {
     }
 
     /// Live ritual ring + next block once a routine exists; otherwise a nudge
-    /// into the Ritual tab.
+    /// into the Ritual tab. Reads the shared plan — never generates its own.
     @ViewBuilder private var ritualCard: some View {
-        if let profile = routineStore.profile {
-            let routine = RuleBasedRoutineEngine().generate(from: profile, aqi: viewModel.aqi)
+        if let routine = routineStore.routine {
             Button { tabRouter.navigate(to: .ritual) } label: {
                 HHCard {
                     HStack(spacing: HHSpacing.md) {

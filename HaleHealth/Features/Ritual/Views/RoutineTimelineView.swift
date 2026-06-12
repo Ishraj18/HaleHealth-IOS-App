@@ -74,7 +74,9 @@ struct RoutineTimelineView: View {
                 withAnimation(.hhSpring) { store.toggle(block.id) }
                 guard !wasDone else { return }
                 Haptics.tap()
-                if block.kind == .drink, let pid = block.productID {
+                // shouldLogDrink is true once per block per day — re-toggling
+                // can't write duplicate drink_logs rows.
+                if block.kind == .drink, let pid = block.productID, store.shouldLogDrink(block.id) {
                     appState.logDrink(pid)
                 }
                 let progress = store.progress(for: routine)
@@ -152,7 +154,7 @@ struct RoutineTimelineView: View {
 #Preview {
     let routine = RuleBasedRoutineEngine().generate(
         from: RoutineProfile(goals: [.lungHealth], mind: .scattered),
-        aqi: AQIReading(value: 218, station: "Gurgaon", fetchedAt: Date())
+        context: GenerationContext(aqi: AQIReading(value: 218, station: "Gurgaon", fetchedAt: Date()))
     )
     return ScrollView {
         RoutineTimelineView(routine: routine, store: RoutineStore())

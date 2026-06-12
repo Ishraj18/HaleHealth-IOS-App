@@ -12,6 +12,7 @@ struct UserProfileDTO: Decodable, Sendable {
     let streakCount: Int?
     let lastLogDate: String?
     let createdAt: String?
+    let avatarUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case id, email, phone
@@ -20,6 +21,7 @@ struct UserProfileDTO: Decodable, Sendable {
         case streakCount = "streak_count"
         case lastLogDate = "last_log_date"
         case createdAt = "created_at"
+        case avatarUrl = "avatar_url"
     }
 
     func toDomain() -> UserProfile {
@@ -31,7 +33,8 @@ struct UserProfileDTO: Decodable, Sendable {
             bodyGoals: (bodyGoals ?? []).compactMap(UserProfile.BodyGoal.init(rawValue:)),
             streakCount: streakCount ?? 0,
             lastLogDate: lastLogDate.flatMap(DateParsing.date(fromISODate:)),
-            createdAt: createdAt.flatMap(DateParsing.date(fromTimestamp:)) ?? Date()
+            createdAt: createdAt.flatMap(DateParsing.date(fromTimestamp:)) ?? Date(),
+            avatarURL: avatarUrl
         )
     }
 }
@@ -46,6 +49,7 @@ struct UserProfileUpsert: Encodable, Sendable {
     let bodyGoals: [String]
     let streakCount: Int
     let lastLogDate: String?
+    let avatarUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case id, email, phone
@@ -53,6 +57,7 @@ struct UserProfileUpsert: Encodable, Sendable {
         case bodyGoals = "body_goals"
         case streakCount = "streak_count"
         case lastLogDate = "last_log_date"
+        case avatarUrl = "avatar_url"
     }
 
     init(_ profile: UserProfile) {
@@ -63,6 +68,7 @@ struct UserProfileUpsert: Encodable, Sendable {
         bodyGoals = profile.bodyGoals.map(\.rawValue)
         streakCount = profile.streakCount
         lastLogDate = profile.lastLogDate?.hhISODate
+        avatarUrl = profile.avatarURL
     }
 }
 

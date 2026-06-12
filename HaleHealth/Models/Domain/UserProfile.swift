@@ -9,6 +9,8 @@ struct UserProfile: Codable, Equatable, Sendable {
     var streakCount: Int
     var lastLogDate: Date?
     var createdAt: Date
+    /// Profile photo from the identity provider (Google/Apple), when available.
+    var avatarURL: String? = nil
 
     enum BodyGoal: String, Codable, CaseIterable, Sendable, Identifiable {
         case lungHealth   = "lung_health"

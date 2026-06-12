@@ -11,13 +11,16 @@ struct ProfilePlaceholderView: View {
     var body: some View {
         VStack(spacing: HHSpacing.lg) {
             if let profile = session.profile {
-                VStack(spacing: HHSpacing.xs) {
-                    Text(profile.displayName)
-                        .hhFont(.hhDisplay2)
-                        .hhText(.display)
-                    Text(profile.email)
-                        .hhFont(.hhBody)
-                        .hhText(.secondary)
+                VStack(spacing: HHSpacing.sm) {
+                    avatar(for: profile)
+                    VStack(spacing: HHSpacing.xs) {
+                        Text(profile.displayName)
+                            .hhFont(.hhDisplay2)
+                            .hhText(.display)
+                        Text(profile.email)
+                            .hhFont(.hhBody)
+                            .hhText(.secondary)
+                    }
                 }
                 .padding(.top, HHSpacing.xl)
             }
@@ -40,6 +43,43 @@ struct ProfilePlaceholderView: View {
         .hhScreenBackground()
         .navigationTitle(Tab.profile.label)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// The provider photo when one exists; otherwise the user's initials on a
+    /// brand-toned disc.
+    @ViewBuilder
+    private func avatar(for profile: UserProfile) -> some View {
+        let size: CGFloat = 88
+        if let urlString = profile.avatarURL, let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFill()
+                } else {
+                    initialsDisc(for: profile, size: size)
+                }
+            }
+            .frame(width: size, height: size)
+            .clipShape(Circle())
+            .overlay(Circle().strokeBorder(Color.hhBorder, lineWidth: 1))
+        } else {
+            initialsDisc(for: profile, size: size)
+        }
+    }
+
+    private func initialsDisc(for profile: UserProfile, size: CGFloat) -> some View {
+        let initials = profile.displayName
+            .split(separator: " ")
+            .prefix(2)
+            .compactMap(\.first)
+            .map(String.init)
+            .joined()
+        return ZStack {
+            Circle().fill(Color.hhMutedSage.opacity(0.25))
+            Text(initials.isEmpty ? "🙂" : initials)
+                .hhFont(.hhDisplay2)
+                .hhText(.display)
+        }
+        .frame(width: size, height: size)
     }
 }
 

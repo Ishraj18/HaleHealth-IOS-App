@@ -28,6 +28,11 @@ final class MeditationStore: ObservableObject {
         lifetimeSessions += 1
         defaults.set(lifetimeSessions, forKey: Self.countKey)
 
+        HistoryStore.shared.updateToday {
+            $0.meditationSessions += 1
+            $0.meditationMinutes += session.durationSeconds / 60
+        }
+
         guard let userId, AppConfig.isSupabaseConfigured else { return }
         struct Row: Encodable {
             let userId: UUID, patternId: String, durationSeconds: Int

@@ -8,6 +8,7 @@ struct AppCoordinator: View {
     @StateObject private var appState = AppState()
     @StateObject private var tabRouter = TabRouter()
     @State private var atmosphere = HHAtmosphere(phase: .din)
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         content
@@ -24,8 +25,14 @@ struct AppCoordinator: View {
                 await appState.loadAQI()
             }
             .onChange(of: appState.currentAQI) { _, _ in refreshAtmosphere() }
+            .onChange(of: scenePhase) { _, phase in
+                // The app can live across midnight; re-key the ritual day on
+                // every return to the foreground.
+                if phase == .active { RoutineStore.shared.rolloverIfNeeded() }
+            }
             .onReceive(Timer.publish(every: 300, on: .main, in: .common).autoconnect()) { _ in
                 refreshAtmosphere()   // keep the canvas on Delhi's clock
+                RoutineStore.shared.rolloverIfNeeded()
             }
     }
 
@@ -43,12 +50,28 @@ struct AppCoordinator: View {
     @ViewBuilder private var content: some View {
         if appState.isRestoringSession && appState.hasCompletedOnboarding {
             // Keep signed-in users out of the login screen while the stored
-            // session restores — no flash, no accidental re-auth.
-            VStack(spacing: HHSpacing.lg) {
-                Text("Hale Health")
-                    .hhFont(.hhDisplay1)
+            // session restores — no flash, no accidental re-auth. Mirrors the
+            // static launch screen (same mark, same canvas) so the handoff
+            // from launch image to live UI is invisible.
+            VStack(spacing: HHSpacing.xl) {
+                Spacer()
+                Image("BrandLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96)
                     .hhText(.display)
+                VStack(spacing: HHSpacing.sm) {
+                    Text("Hale Health")
+                        .hhFont(.hhDisplay1)
+                        .hhText(.display)
+                    Text("ROOTED IN RITUAL")
+                        .hhFont(.hhOverline)
+                        .tracking(3)
+                        .hhText(.secondary)
+                }
+                Spacer()
                 HHLoadingView()
+                    .padding(.bottom, HHSpacing.section)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .hhScreenBackground()

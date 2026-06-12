@@ -1,66 +1,98 @@
 import Foundation
 
-protocol RoutineEngineProtocol {
-    func generate(from profile: RoutineProfile, aqi: AQIReading?) -> DailyRoutine
+/// Everything a routine engine may consider beyond the questionnaire answers.
+/// Grows over time (health signals, history, trends) without changing the
+/// protocol — new inputs are new optional fields, absent inputs degrade cleanly.
+struct GenerationContext: Equatable, Sendable {
+    /// Live air quality, when a reading exists.
+    var aqi: AQIReading?
+    /// Wake time observed by Apple Health today (minutes from midnight).
+    var observedWakeMinutes: Int?
+
+    static let empty = GenerationContext()
 }
 
-/// Deterministic, offline routine generator. Pure function of (profile, AQI) —
-/// fully unit-testable. Phase 2's Vaidya AI plugs in at the same protocol to
-/// re-rank blocks and rewrite copy without touching callers.
+/// The generation seam. Async + throwing so an AI-backed engine (Vaidya) can
+/// satisfy it later; `RuleBasedRoutineEngine` satisfies it synchronously and
+/// remains the deterministic, offline fallback behind any future engine.
+protocol RoutineEngineProtocol {
+    func generate(from profile: RoutineProfile, context: GenerationContext) async throws -> DailyRoutine
+}
+
+/// Deterministic, offline routine generator. Pure function of (profile, context)
+/// — fully unit-testable.
+///
+/// Block IDs are **semantic slots** ("drink-morning", "movement"), never derived
+/// from times: completion state stored against an ID must survive the plan
+/// re-anchoring around an observed wake time or an AQI change mid-day.
 struct RuleBasedRoutineEngine: RoutineEngineProtocol {
 
-    func generate(from p: RoutineProfile, aqi: AQIReading?) -> DailyRoutine {
+    /// Health-observed wake times within this distance of the planned wake keep
+    /// the planned anchor; beyond it, the day re-anchors to reality.
+    static let wakeShiftThresholdMinutes = 45
+
+    /// The wake anchor the plan is built on: the profile's answer unless Health
+    /// observed a materially different wake today.
+    static func effectiveWakeMinutes(profile: RoutineProfile, observed: Int?) -> Int {
+        guard let observed, abs(observed - profile.wakeMinutes) > wakeShiftThresholdMinutes else {
+            return profile.wakeMinutes
+        }
+        return observed
+    }
+
+    func generate(from p: RoutineProfile, context: GenerationContext) -> DailyRoutine {
         var blocks: [RoutineBlock] = []
-        let wake = p.wakeMinutes
+        let aqi = context.aqi
+        let wake = Self.effectiveWakeMinutes(profile: p, observed: context.observedWakeMinutes)
         let highAQI = (aqi?.value ?? 0) > 200
 
         // ── Morning anchors ──────────────────────────────────────────
-        blocks.append(block(.wake, "Rise", wakeLine(p), at: wake, mins: 5))
-        blocks.append(block(.hydrate, "Warm water", "Rehydrate before anything else — your body has fasted all night.", at: wake + 5, mins: 5))
+        blocks.append(block("wake", .wake, "Rise", wakeLine(p), at: wake, mins: 5))
+        blocks.append(block("hydrate", .hydrate, "Warm water", "Rehydrate before anything else — your body has fasted all night.", at: wake + 5, mins: 5))
 
         if includeMeditation(p) {
-            blocks.append(block(.meditate, "Meditate", meditationLine(p), at: wake + 10, mins: meditationLength(p)))
+            blocks.append(block("meditate", .meditate, "Meditate", meditationLine(p), at: wake + 10, mins: meditationLength(p)))
         }
 
         // ── Morning drink (AQI can override the goal drink) ──────────
         let morning = morningProduct(p, highAQI: highAQI, aqi: aqi)
-        blocks.append(block(.drink, "Morning \(morning.romanName)", drinkLine(morning, highAQI: highAQI, aqi: aqi),
+        blocks.append(block("drink-morning", .drink, "Morning \(morning.romanName)", drinkLine(morning, highAQI: highAQI, aqi: aqi),
                             at: wake + 10 + (includeMeditation(p) ? meditationLength(p) : 0), mins: 10,
                             product: morning.id))
 
-        blocks.append(block(.meal, "Breakfast", "Eat within 90 minutes of waking to steady morning energy.", at: wake + 60, mins: 25))
+        blocks.append(block("breakfast", .meal, "Breakfast", "Eat within 90 minutes of waking to steady morning energy.", at: wake + 60, mins: 25))
 
         // ── Movement ─────────────────────────────────────────────────
         if p.exercise != .never || p.fitness >= 3 {
             let am = p.movePref == .morning || (p.movePref == .flexible && p.chronotype == .lark)
             let start = am ? wake + 110 : 18 * 60
-            blocks.append(block(.workout, workoutTitle(p), workoutLine(p, highAQI: highAQI),
+            blocks.append(block("movement", .workout, workoutTitle(p), workoutLine(p, highAQI: highAQI),
                                 at: start, mins: workoutLength(p)))
         } else {
-            blocks.append(block(.walk, "Gentle walk", highAQI ? "Keep it short or indoors today — the air is heavy." : "Ten easy minutes. Movement is the habit; intensity comes later.",
+            blocks.append(block("movement", .walk, "Gentle walk", highAQI ? "Keep it short or indoors today — the air is heavy." : "Ten easy minutes. Movement is the habit; intensity comes later.",
                                 at: wake + 110, mins: 10))
         }
 
         // ── Midday ───────────────────────────────────────────────────
-        blocks.append(block(.meal, "Lunch", "Your biggest meal — digestion is strongest at midday.", at: 13 * 60, mins: 30))
+        blocks.append(block("lunch", .meal, "Lunch", "Your biggest meal — digestion is strongest at midday.", at: 13 * 60, mins: 30))
 
         // Second drink: the goal drink if AQI displaced it, else hydration nudge.
         if highAQI, let goalProduct = goalDrink(p), goalProduct.id != morning.id {
-            blocks.append(block(.drink, "Afternoon \(goalProduct.romanName)",
+            blocks.append(block("drink-afternoon", .drink, "Afternoon \(goalProduct.romanName)",
                                 "Back to your goal: \(goalProduct.englishName.lowercased()), once the morning shield is done.",
                                 at: 16 * 60, mins: 10, product: goalProduct.id))
         }
 
         // ── Evening ──────────────────────────────────────────────────
-        blocks.append(block(.meal, "Light dinner", "Finish 2–3 hours before sleep so rest goes to repair, not digestion.", at: 19 * 60 + 30, mins: 30))
+        blocks.append(block("dinner", .meal, "Light dinner", "Finish 2–3 hours before sleep so rest goes to repair, not digestion.", at: 19 * 60 + 30, mins: 30))
 
         if includeJournaling(p) {
-            blocks.append(block(.journal, "Journal", journalLine(p), at: 21 * 60, mins: 10))
+            blocks.append(block("journal", .journal, "Journal", journalLine(p), at: 21 * 60, mins: 10))
         }
 
         let sleepAt = sleepTime(p)
-        blocks.append(block(.windDown, "Wind down", windDownLine(p), at: sleepAt - 45, mins: 30))
-        blocks.append(block(.sleep, "Lights out", "Same time nightly — consistency beats duration.", at: sleepAt, mins: 5))
+        blocks.append(block("wind-down", .windDown, "Wind down", windDownLine(p), at: sleepAt - 45, mins: 30))
+        blocks.append(block("sleep", .sleep, "Lights out", "Same time nightly — consistency beats duration.", at: sleepAt, mins: 5))
 
         return DailyRoutine(
             blocks: blocks.sorted { $0.startMinutes < $1.startMinutes },
@@ -166,9 +198,9 @@ struct RuleBasedRoutineEngine: RoutineEngineProtocol {
 
     // MARK: -
 
-    private func block(_ kind: RoutineBlock.Kind, _ title: String, _ detail: String,
+    private func block(_ slot: String, _ kind: RoutineBlock.Kind, _ title: String, _ detail: String,
                        at start: Int, mins: Int, product: ProductID? = nil) -> RoutineBlock {
-        RoutineBlock(id: "\(kind.rawValue)-\(start)", kind: kind, title: title, detail: detail,
+        RoutineBlock(id: slot, kind: kind, title: title, detail: detail,
                      startMinutes: start, durationMinutes: mins, productID: product)
     }
 }

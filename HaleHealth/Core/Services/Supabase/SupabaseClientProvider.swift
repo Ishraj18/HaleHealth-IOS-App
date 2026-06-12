@@ -9,6 +9,19 @@ enum SupabaseClientProvider {
     static let shared: SupabaseClient = {
         let url = URL(string: AppConfig.supabaseURL)
             ?? URL(string: "https://unconfigured.supabase.co")!
-        return SupabaseClient(supabaseURL: url, supabaseKey: AppConfig.supabaseAnonKey)
+        return SupabaseClient(
+            supabaseURL: url,
+            supabaseKey: AppConfig.supabaseAnonKey,
+            options: SupabaseClientOptions(
+                auth: SupabaseClientOptions.AuthOptions(
+                    redirectToURL: SupabaseAuthService.oauthRedirectURL,
+                    // Opt in to the SDK's corrected behavior: the locally
+                    // stored session is emitted as-is and validity is OUR
+                    // responsibility — fetchCurrentProfile checks isExpired
+                    // and refreshes before trusting it.
+                    emitLocalSessionAsInitialSession: true
+                )
+            )
+        )
     }()
 }

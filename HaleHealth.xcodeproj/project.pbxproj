@@ -13,7 +13,18 @@
 		D0D0D0D0D0D0D0D0D0D03004 /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = D0D0D0D0D0D0D0D0D0D02004 /* KeychainAccess */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		7E570000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E22D67982FD83CA80065FAFE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E22D679F2FD83CA80065FAFE;
+			remoteInfo = HaleHealth;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		7E5700000000000000000002 /* HaleHealthTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HaleHealthTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0D0D0D0D0D0D0D0D0D00001 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		D0D0D0D0D0D0D0D0D0D00002 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		D0D0D0D0D0D0D0D0D0D00004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -22,6 +33,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		7E5700000000000000000001 /* HaleHealthTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = HaleHealthTests;
+			sourceTree = "<group>";
+		};
 		E22D67A22FD83CA80065FAFE /* HaleHealth */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HaleHealth;
@@ -30,6 +46,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		7E5700000000000000000006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E22D679D2FD83CA80065FAFE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -59,6 +82,7 @@
 			isa = PBXGroup;
 			children = (
 				E22D67A22FD83CA80065FAFE /* HaleHealth */,
+				7E5700000000000000000001 /* HaleHealthTests */,
 				D0D0D0D0D0D0D0D0D0D00003 /* Config */,
 				E22D67A12FD83CA80065FAFE /* Products */,
 			);
@@ -68,6 +92,7 @@
 			isa = PBXGroup;
 			children = (
 				E22D67A02FD83CA80065FAFE /* HaleHealth.app */,
+				7E5700000000000000000002 /* HaleHealthTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -75,6 +100,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		7E5700000000000000000003 /* HaleHealthTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E5700000000000000000004 /* Build configuration list for PBXNativeTarget "HaleHealthTests" */;
+			buildPhases = (
+				7E5700000000000000000005 /* Sources */,
+				7E5700000000000000000006 /* Frameworks */,
+				7E5700000000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7E5700000000000000000008 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7E5700000000000000000001 /* HaleHealthTests */,
+			);
+			name = HaleHealthTests;
+			packageProductDependencies = (
+			);
+			productName = HaleHealthTests;
+			productReference = 7E5700000000000000000002 /* HaleHealthTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		E22D679F2FD83CA80065FAFE /* HaleHealth */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = E22D67AB2FD83CA90065FAFE /* Build configuration list for PBXNativeTarget "HaleHealth" */;
@@ -111,6 +159,10 @@
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					7E5700000000000000000003 = {
+						CreatedOnToolsVersion = 26.4;
+						TestTargetID = E22D679F2FD83CA80065FAFE;
+					};
 					E22D679F2FD83CA80065FAFE = {
 						CreatedOnToolsVersion = 26.4;
 					};
@@ -137,11 +189,19 @@
 			projectRoot = "";
 			targets = (
 				E22D679F2FD83CA80065FAFE /* HaleHealth */,
+				7E5700000000000000000003 /* HaleHealthTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7E5700000000000000000007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E22D679E2FD83CA80065FAFE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -152,6 +212,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7E5700000000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E22D679C2FD83CA80065FAFE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -161,7 +228,57 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		7E5700000000000000000008 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E22D679F2FD83CA80065FAFE /* HaleHealth */;
+			targetProxy = 7E570000000000000000000B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		7E5700000000000000000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RJST2DRWMS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.halehealthindia.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HaleHealth.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HaleHealth";
+			};
+			name = Debug;
+		};
+		7E570000000000000000000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RJST2DRWMS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.halehealthindia.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HaleHealth.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HaleHealth";
+			};
+			name = Release;
+		};
 		E22D67A92FD83CA90065FAFE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D0D0D0D0D0D0D0D0D0D00001 /* Debug.xcconfig */;
@@ -292,7 +409,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = HaleHealth/HaleHealth.entitlements;
 				CODE_SIGN_ENTITLEMENTS = Config/HaleHealth.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -322,7 +438,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = HaleHealth/HaleHealth.entitlements;
 				CODE_SIGN_ENTITLEMENTS = Config/HaleHealth.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -350,6 +465,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		7E5700000000000000000004 /* Build configuration list for PBXNativeTarget "HaleHealthTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7E5700000000000000000009 /* Debug */,
+				7E570000000000000000000A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		E22D679B2FD83CA80065FAFE /* Build configuration list for PBXProject "HaleHealth" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

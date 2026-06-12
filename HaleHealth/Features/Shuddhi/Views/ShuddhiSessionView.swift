@@ -154,13 +154,8 @@ struct ShuddhiSessionView: View {
             ),
             userId: appState.userSession.profile?.id
         )
-        // Auto-check today's meditate block.
-        if let profile = RoutineStore.shared.profile {
-            let routine = RuleBasedRoutineEngine().generate(from: profile, aqi: appState.currentAQI)
-            for block in routine.blocks where block.kind == .meditate {
-                RoutineStore.shared.markDone(block.id)
-            }
-        }
+        // Auto-check today's meditate block on the shared plan.
+        RoutineStore.shared.markDone(kind: .meditate)
     }
 }
 

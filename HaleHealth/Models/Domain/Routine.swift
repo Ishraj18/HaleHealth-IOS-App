@@ -28,7 +28,7 @@ struct RoutineBlock: Identifiable, Codable, Equatable, Sendable {
         case wake, hydrate, meditate, drink, meal, workout, walk, journal, windDown, sleep
     }
 
-    let id: String                 // stable per kind+slot, keys completion state
+    let id: String                 // semantic slot ("drink-morning"), keys completion state across regenerations
     let kind: Kind
     let title: String
     let detail: String             // the one-line "why"
@@ -69,4 +69,26 @@ struct DailyRoutine: Codable, Equatable, Sendable {
 struct RoutineCompletion: Codable, Equatable, Sendable {
     var day: String                // "yyyy-MM-dd"
     var completedBlockIDs: Set<String> = []
+    /// Drink blocks already written to `drink_logs` today — re-toggling a block
+    /// must not produce duplicate rows.
+    var loggedDrinkBlockIDs: Set<String> = []
+
+    init(day: String, completedBlockIDs: Set<String> = [], loggedDrinkBlockIDs: Set<String> = []) {
+        self.day = day
+        self.completedBlockIDs = completedBlockIDs
+        self.loggedDrinkBlockIDs = loggedDrinkBlockIDs
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case day, completedBlockIDs, loggedDrinkBlockIDs
+    }
+
+    // Tolerant decoding: records persisted before `loggedDrinkBlockIDs` existed
+    // still decode instead of resetting the day.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        day = try container.decode(String.self, forKey: .day)
+        completedBlockIDs = try container.decodeIfPresent(Set<String>.self, forKey: .completedBlockIDs) ?? []
+        loggedDrinkBlockIDs = try container.decodeIfPresent(Set<String>.self, forKey: .loggedDrinkBlockIDs) ?? []
+    }
 }

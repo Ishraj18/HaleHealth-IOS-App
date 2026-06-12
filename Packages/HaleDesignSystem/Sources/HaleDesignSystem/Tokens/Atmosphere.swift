@@ -40,24 +40,56 @@ public struct HHAtmosphere: Equatable, Sendable {
 
     // MARK: - Canvas
 
-    public var canvas: Color {
-        switch phase {
-        case .bhor:    return Color(hex: "#F8F0DC")   // pale gold dawn
-        case .din:     return Color(hex: "#F5F0E8")   // parchment baseline
-        case .sandhya: return Color(hex: "#F4E9D6")   // amber dusk
-        case .raat:    return Color(hex: "#16241C")   // deep forest night
-        }
-    }
+    public var canvas: Color { Color(hex: canvasHex) }
 
     /// Top-of-screen wash colour for the canvas gradient.
     public var canvasWash: Color {
-        if let hazeTintHex { return Color(hex: hazeTintHex).opacity(0.05 + haze * 0.07) }
+        guard let wash = washSpec else { return .clear }
+        return Color(hex: wash.hex).opacity(wash.opacity)
+    }
+
+    /// The canvas with the top wash composited in — exactly what the top edge
+    /// of an atmosphere screen shows. Bars pinned to the screen top (navigation
+    /// bars) wear this so they blend seamlessly into the page at every phase.
+    public var canvasTop: Color {
+        guard let wash = washSpec else { return canvas }
+        let base = Self.rgb(canvasHex)
+        let over = Self.rgb(wash.hex)
+        let alpha = wash.opacity
+        return Color(.sRGB,
+                     red: over.r * alpha + base.r * (1 - alpha),
+                     green: over.g * alpha + base.g * (1 - alpha),
+                     blue: over.b * alpha + base.b * (1 - alpha),
+                     opacity: 1)
+    }
+
+    private var canvasHex: String {
         switch phase {
-        case .bhor:    return Color(hex: "#E9C988").opacity(0.18)
-        case .din:     return .clear
-        case .sandhya: return Color(hex: "#C8873A").opacity(0.10)
-        case .raat:    return Color(hex: "#0C1611").opacity(0.55)
+        case .bhor:    return "#F8F0DC"   // pale gold dawn
+        case .din:     return "#F5F0E8"   // parchment baseline
+        case .sandhya: return "#F4E9D6"   // amber dusk
+        case .raat:    return "#16241C"   // deep forest night
         }
+    }
+
+    /// Hex + opacity of the top wash; nil when the canvas is unwashed.
+    private var washSpec: (hex: String, opacity: Double)? {
+        if let hazeTintHex { return (hazeTintHex, 0.05 + haze * 0.07) }
+        switch phase {
+        case .bhor:    return ("#E9C988", 0.18)
+        case .din:     return nil
+        case .sandhya: return ("#C8873A", 0.10)
+        case .raat:    return ("#0C1611", 0.55)
+        }
+    }
+
+    private static func rgb(_ hex: String) -> (r: Double, g: Double, b: Double) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var value: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&value)
+        return (Double((value >> 16) & 0xFF) / 255,
+                Double((value >> 8) & 0xFF) / 255,
+                Double(value & 0xFF) / 255)
     }
 
     // MARK: - Roles

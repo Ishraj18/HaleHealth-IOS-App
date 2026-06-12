@@ -29,7 +29,7 @@ final class TodayViewModel: ObservableObject {
         do {
             let reading = try await aqiService.fetchCurrentAQI()
             aqi = reading
-            appState.currentAQI = reading // keep shared AQI in sync for Hawa
+            appState.setAQI(reading) // shared AQI for Hawa + the routine plan
             buildRecommendations()
             loadState = .loaded
         } catch {

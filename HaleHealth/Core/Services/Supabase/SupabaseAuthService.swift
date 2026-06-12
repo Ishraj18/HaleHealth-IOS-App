@@ -97,11 +97,17 @@ final class SupabaseAuthService: AuthServiceProtocol {
     func fetchCurrentProfile() async throws -> UserProfile? {
         guard AppConfig.isSupabaseConfigured else { return nil }
         do {
-            let session = try await client.auth.session   // refreshes if expired
+            var session = try await client.auth.session   // refreshes if expired
+            // Never restore a dead session: a stale token makes every RLS
+            // write fail as anonymous. Refresh it, or treat as signed out.
+            if session.isExpired {
+                session = try await client.auth.refreshSession()
+            }
             setUserId(session.user.id)
             return Self.baseProfile(from: session.user, fallbackEmail: session.user.email ?? "")
         } catch {
-            Log.auth.debug("No restorable Supabase session.")
+            Log.auth.debug("No restorable Supabase session: \(error.localizedDescription, privacy: .public)")
+            setUserId(nil)
             return nil
         }
     }
@@ -129,16 +135,26 @@ final class SupabaseAuthService: AuthServiceProtocol {
 
     private static func baseProfile(from user: User, fallbackEmail: String) -> UserProfile {
         let email = user.email ?? fallbackEmail
+        // Identity providers (Google/Apple) put the real name and photo in
+        // user metadata — use them; fall back to the email's local part only
+        // for plain email/password accounts.
+        let metadataName = ["full_name", "name"].lazy
+            .compactMap { user.userMetadata[$0]?.stringValue }
+            .first { !$0.isEmpty }
+        let avatar = ["avatar_url", "picture"].lazy
+            .compactMap { user.userMetadata[$0]?.stringValue }
+            .first { !$0.isEmpty }
         let localPart = email.split(separator: "@").first.map(String.init) ?? "Friend"
         return UserProfile(
             id: user.id,
-            displayName: localPart.capitalized,
+            displayName: metadataName ?? localPart.capitalized,
             email: email,
             phone: nil,
             bodyGoals: [],
             streakCount: 0,
             lastLogDate: nil,
-            createdAt: Date()
+            createdAt: Date(),
+            avatarURL: avatar
         )
     }
 }
